@@ -166,7 +166,7 @@ async def retrain(data: BatchTelemetry) -> dict:
 if __name__ == "__main__":
     uvicorn.run(
         "main:app",
-        host="0.0.0.0",
+        host="0.0.0.0",        # nosec B104 - Container boundary
         port=8001,
         reload=True,
         workers=1,             # Single worker is fine for single-process ML model

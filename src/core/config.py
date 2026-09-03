@@ -18,7 +18,7 @@ class AppConfig(BaseSettings):
     environment: str = Field("production", env="ENVIRONMENT")
     
     # API Settings
-    api_host: str = Field("0.0.0.0", env="API_HOST")
+    api_host: str = Field("0.0.0.0", env="API_HOST")  # nosec B104 - Container boundary
     api_port: int = Field(8000, env="API_PORT")
     cors_origins: List[str] = Field(
         default=["http://localhost:5173", "http://localhost:3000"],
