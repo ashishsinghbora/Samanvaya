@@ -26,13 +26,28 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+        working-directory: frontend
+
+      - name: Build frontend
+        run: npm run build
+        working-directory: frontend
+
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
 
       - name: Upload Static Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: './docs'
+          path: './frontend/dist'
 
       - name: Deploy to GitHub Pages
         id: deployment

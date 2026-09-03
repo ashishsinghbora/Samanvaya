@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
+import { XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Area, AreaChart } from 'recharts';
 import { ShieldAlert, ShieldCheck, Activity, RefreshCw } from 'lucide-react';
 
 export const TelemetryDashboard: React.FC = () => {
@@ -91,7 +91,7 @@ export const TelemetryDashboard: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {data.map((item, idx) => (
+        {data.map((item) => (
           <motion.div 
             key={item.name}
             initial={{ opacity: 0, scale: 0.9 }}
