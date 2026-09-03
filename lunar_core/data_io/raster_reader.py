@@ -4,16 +4,13 @@ Planetary Data Ingestion Driver (GDAL/Rasterio GeoTIFF and PDS4 Reader).
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from typing import Optional, Tuple, Union
 import numpy as np
 import rasterio
 
-try:
-    import defusedxml.ElementTree as hardened_ET
-except ImportError:
-    import xml.etree.ElementTree as hardened_ET
+import defusedxml.ElementTree as hardened_ET
+from defusedxml.common import DefusedXmlException
 
 from lunar_core.models import GeoRaster, SensorModality, SunAngles
 
@@ -112,7 +109,10 @@ class PlanetaryRasterReader:
         Extracts solar illumination angles, pixel resolution (GSD), and sensor modality.
         """
         safe_path = sanitize_path(label_xml_path, allowed_dir=allowed_dir)
-        tree = hardened_ET.parse(str(safe_path))
+        try:
+            tree = hardened_ET.parse(str(safe_path))
+        except (DefusedXmlException, hardened_ET.ParseError) as exc:
+            raise ValueError(f"Invalid or unsafe PDS4 XML label: {safe_path}") from exc
         root = tree.getroot()
 
         # Extract namespace if present

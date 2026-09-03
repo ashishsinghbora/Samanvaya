@@ -5,7 +5,6 @@ Geospatial Exporter (GeoTIFF, Ground Control Points CSV, GeoJSON Vector Field).
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 from typing import List, Optional, Union
 import numpy as np
@@ -59,11 +58,12 @@ class PlanetaryRasterWriter:
         matches: List[KeypointMatch],
         output_path: Union[str, Path],
         ref_transform: Optional[Affine] = None,
+        allowed_dir: Optional[Path] = None,
     ) -> None:
         """
         Exports tie-points as standard Ground Control Points (GCPs) for photogrammetric bundle adjustment.
         """
-        out_path = Path(output_path)
+        out_path = sanitize_path(output_path, allowed_dir=allowed_dir)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         lines = [
@@ -83,7 +83,7 @@ class PlanetaryRasterWriter:
                 f"{sx:.6f},{sy:.6f},{cxy:.6f},{w:.6f}\n"
             )
 
-        with open(out_path, "w") as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             f.writelines(lines)
 
     @staticmethod
@@ -91,11 +91,12 @@ class PlanetaryRasterWriter:
         matches: List[KeypointMatch],
         output_path: Union[str, Path],
         ref_transform: Optional[Affine] = None,
+        allowed_dir: Optional[Path] = None,
     ) -> None:
         """
         Exports displacement vectors as standard GeoJSON features for QGIS and ArcGIS.
         """
-        out_path = Path(output_path)
+        out_path = sanitize_path(output_path, allowed_dir=allowed_dir)
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         features = []
@@ -132,5 +133,5 @@ class PlanetaryRasterWriter:
             "features": features,
         }
 
-        with open(out_path, "w") as f:
+        with open(out_path, "w", encoding="utf-8") as f:
             json.dump(geojson_doc, f, indent=2)

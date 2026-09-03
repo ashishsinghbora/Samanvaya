@@ -84,6 +84,25 @@ class ParabolicHessianRefiner(SubpixelRefinerBase):
         weight = sqrt(4*a*b - c^2)
     Achieves target RMSE < 0.40 pixels.
     """
+    _PATCH_COORDS = np.array(
+        [
+            [-1.0, -1.0], [0.0, -1.0], [1.0, -1.0],
+            [-1.0,  0.0], [0.0,  0.0], [1.0,  0.0],
+            [-1.0,  1.0], [0.0,  1.0], [1.0,  1.0],
+        ],
+        dtype=np.float64,
+    )
+    _DESIGN_MATRIX = np.column_stack(
+        (
+            _PATCH_COORDS[:, 0] ** 2,
+            _PATCH_COORDS[:, 1] ** 2,
+            _PATCH_COORDS[:, 0] * _PATCH_COORDS[:, 1],
+            _PATCH_COORDS[:, 0],
+            _PATCH_COORDS[:, 1],
+            np.ones(_PATCH_COORDS.shape[0], dtype=np.float64),
+        )
+    )
+    _DESIGN_PINV = np.linalg.pinv(_DESIGN_MATRIX)
 
     def fit_surface(self, patch_3x3: np.ndarray) -> Optional[SubpixelSurfaceFit]:
         return self.fit_quadratic_surface(patch_3x3)
@@ -92,33 +111,20 @@ class ParabolicHessianRefiner(SubpixelRefinerBase):
     def fit_quadratic_surface(patch_3x3: np.ndarray) -> Optional[SubpixelSurfaceFit]:
         if patch_3x3.shape != (3, 3):
             raise ValueError(f"Expected 3x3 patch, got {patch_3x3.shape}")
+        if not np.all(np.isfinite(patch_3x3)):
+            return None
 
-        z00 = float(patch_3x3[1, 1])
-        z_xp = float(patch_3x3[1, 2])
-        z_xm = float(patch_3x3[1, 0])
-        z_yp = float(patch_3x3[2, 1])
-        z_ym = float(patch_3x3[0, 1])
-        z_pp = float(patch_3x3[2, 2])
-        z_pm = float(patch_3x3[0, 2])
-        z_mp = float(patch_3x3[2, 0])
-        z_mm = float(patch_3x3[0, 0])
-
-        # Analytical 6 parameters
-        a = (z_xp - 2.0 * z00 + z_xm) / 2.0
-        b = (z_yp - 2.0 * z00 + z_ym) / 2.0
-        c = (z_pp - z_pm - z_mp + z_mm) / 4.0
-        d = (z_xp - z_xm) / 2.0
-        e = (z_yp - z_ym) / 2.0
-        f = z00
+        coeffs = ParabolicHessianRefiner._DESIGN_PINV @ patch_3x3.astype(np.float64, copy=False).reshape(-1)
+        a, b, c, d, e, f = [float(v) for v in coeffs]
 
         det_h = 4.0 * a * b - c**2
-        if det_h <= 1e-7 or a >= 0.0 or b >= 0.0:
+        if not np.isfinite(det_h) or det_h <= 1e-8 or a >= 0.0 or b >= 0.0:
             return None
 
         dx = (-2.0 * b * d + c * e) / det_h
         dy = (-2.0 * a * e + c * d) / det_h
 
-        if abs(dx) > 1.0 or abs(dy) > 1.0:
+        if not (np.isfinite(dx) and np.isfinite(dy)) or abs(dx) > 1.0 or abs(dy) > 1.0:
             return None
 
         peak_val = a * dx**2 + b * dy**2 + c * dx * dy + d * dx + e * dy + f
@@ -131,6 +137,8 @@ class ParabolicHessianRefiner(SubpixelRefinerBase):
 
         sigma_x2 = abs(inv_h00)
         sigma_y2 = abs(inv_h11)
+        if not np.isfinite(sigma_x2) or not np.isfinite(sigma_y2):
+            return None
         sigma_x = float(np.sqrt(sigma_x2))
         sigma_y = float(np.sqrt(sigma_y2))
         cov_xy = float(inv_h01)
@@ -259,4 +267,3 @@ class AnalyticalSubpixelRefiner(ParabolicHessianRefiner):
     Backward-compatible alias for existing pipelines and unit tests.
     """
     pass
-

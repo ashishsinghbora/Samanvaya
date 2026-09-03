@@ -114,6 +114,23 @@ class PlanetaryTileProcessor:
             cap_per_cell=4,
         )
 
+    @staticmethod
+    def _estimate_tile_pair_ram_mb(ref_shape: Tuple[int, int], src_shape: Tuple[int, int]) -> float:
+        """Approximate in-memory size (MB) for float32 source/reference tiles plus normalized copies."""
+        ref_bytes = int(ref_shape[0]) * int(ref_shape[1]) * 4
+        src_bytes = int(src_shape[0]) * int(src_shape[1]) * 4
+        # Factor 4: reference/source + intermediate normalized/resized copies.
+        return float((ref_bytes + src_bytes) * 4) / (1024.0 * 1024.0)
+
+    def _enforce_tile_memory_budget(self, ref_shape: Tuple[int, int], src_shape: Tuple[int, int]) -> float:
+        est_mb = self._estimate_tile_pair_ram_mb(ref_shape, src_shape)
+        if est_mb > self.max_ram_mb:
+            raise MemoryError(
+                f"Tile pair memory estimate {est_mb:.1f} MB exceeds configured "
+                f"max_ram_mb={self.max_ram_mb:.1f}. Reduce tile_size/inference_dim."
+            )
+        return est_mb
+
     # -------------------------------------------------------------------------
     # 1. Coarse Footprint Overlap Identification via Fourier-Mellin Overviews
     # -------------------------------------------------------------------------
@@ -374,6 +391,7 @@ class PlanetaryTileProcessor:
         tiles_with_matches = 0
 
         raw_global_matches: List[KeypointMatch] = []
+        peak_ram_mb = 0.0
 
         # Step 4: Iterate over tile windows without full memory allocation
         for win_ref in ref_windows:
@@ -397,6 +415,13 @@ class PlanetaryTileProcessor:
                 continue
 
             win_src = Window(col_off=src_x, row_off=src_y, width=src_w, height=src_h)
+            peak_ram_mb = max(
+                peak_ram_mb,
+                self._enforce_tile_memory_budget(
+                    (int(win_ref.height), int(win_ref.width)),
+                    (int(win_src.height), int(win_src.width)),
+                ),
+            )
 
             # Read tiles out-of-core
             tile_ref = self._read_window_data(reference_raster, win_ref)
@@ -503,4 +528,5 @@ class PlanetaryTileProcessor:
             metrics=metrics,
             coarse_overlap=coarse_overlap,
             processing_time_s=elapsed,
+            peak_ram_mb=peak_ram_mb,
         )

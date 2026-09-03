@@ -102,7 +102,7 @@ def cmd_align(args: argparse.Namespace) -> None:
 
     if warped is not None:
         warped_file = out_dir / "registered_source.tif"
-        PlanetaryRasterWriter.write_geotiff(warped, raster_ref, warped_file)
+        PlanetaryRasterWriter.write_geotiff(warped_file, warped, raster_ref)
         print(f"🗺️ Exported Registered GeoTIFF: {warped_file}")
 
     print("\n" + "=" * 50)
