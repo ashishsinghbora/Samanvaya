@@ -34,7 +34,7 @@ install-all:
 
 dev:
 	@echo "🌙 Starting Samanvaya Full-Stack (ML + Gateway + React)..."
-	@bash start.sh
+	@npm start
 
 run:
 	@echo "🚀 Launching Samanvaya Web Portal on http://localhost:8501 ..."

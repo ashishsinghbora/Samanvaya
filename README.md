@@ -83,19 +83,19 @@ flowchart TD
 ### 1. Sun-Angle Invariance via 2D Log-Gabor Phase Congruency
 Phase Congruency $PC(x, y)$ detects invariant structural boundaries (crater rims) where Fourier phases align across spatial frequencies, independent of local contrast or illumination:
 
-$$PC(x, y) = \frac{\sum_o \sum_s \left\lfloor E_{s,o}(x, y) - T_{s,o} \right\rfloor}{\sum_o \sum_s A_{s,o}(x, y) + \epsilon}$$
+$$PC(x, y) = \\frac{\\sum_o \\sum_s \\left\\lfloor E_{s,o}(x, y) - T_{s,o} \\right\\rfloor}{\\sum_o \\sum_s A_{s,o}(x, y) + \\epsilon}$$
 
-where $E_{s,o}(x, y) = \sqrt{F_{s,o}(x, y)^2 + H_{s,o}(x, y)^2}$ is local energy, $A_{s,o}(x, y)$ is amplitude, and $T_{s,o}$ is the dynamic noise threshold estimated across scales $s$ and orientations $o$.
+where $E_{s,o}(x, y) = \\sqrt{F_{s,o}(x, y)^2 + H_{s,o}(x, y)^2}$ is local energy, $A_{s,o}(x, y)$ is amplitude, and $T_{s,o}$ is the dynamic noise threshold estimated across scales $s$ and orientations $o$.
 
 ### 2. Sub-Pixel Precision via 2D Paraboloid Fitting
-To transcend discrete grid limitations ($< 0.1\text{ px}$ accuracy), a 2D Taylor polynomial is fitted over the Normalized Cross-Correlation (NCC) surface $C(u, v)$ around peak coordinate $(x_0, y_0)$:
+To transcend discrete grid limitations ($< 0.1\\text{ px}$ accuracy), a 2D Taylor polynomial is fitted over the Normalized Cross-Correlation (NCC) surface $C(u, v)$ around peak coordinate $(x_0, y_0)$:
 
-$$\Delta x = -\frac{\frac{\partial C}{\partial x}}{\frac{\partial^2 C}{\partial x^2}}, \quad \Delta y = -\frac{\frac{\partial C}{\partial y}}{\frac{\partial^2 C}{\partial y^2}}$$
+$$\\Delta x = -\\frac{\\frac{\\partial C}{\\partial x}}{\\frac{\\partial^2 C}{\\partial x^2}}, \\quad \\Delta y = -\\frac{\\frac{\\partial C}{\\partial y}}{\\frac{\\partial^2 C}{\\partial y^2}}$$
 
 ### 3. Spatial Uniformity Index via Normalized Shannon Entropy
 To ensure tie points do not clump in high-relief craters, spatial distribution is scored using 2D grid cell probabilities $p_i$:
 
-$$H_{\text{norm}} = -\frac{\sum_{i=1}^K p_i \log_2(p_i)}{\log_2(K)} \ge 0.95$$
+$$H_{\\text{norm}} = -\\frac{\\sum_{i=1}^K p_i \\log_2(p_i)}{\\log_2(K)} \\ge 0.95$$
 
 ---
 
@@ -103,20 +103,20 @@ $$H_{\text{norm}} = -\frac{\sum_{i=1}^K p_i \log_2(p_i)}{\log_2(K)} \ge 0.95$$
 
 | Feature | Classical SIFT / ORB | Samanvaya v2.0.0 Enterprise | Advantage |
 | :--- | :---: | :---: | :--- |
-| **Illumination Invariance** | ❌ Fails on $\Delta \theta_{\text{sun}} > 30^\circ$ | ✅ **180° Invariant** (Log-Gabor PC) | Flawless registration across morning/afternoon passes. |
-| **Scale Disparity Tolerance** | ❌ Max $2\times$ | ✅ **Up to $320\times$** (ASIFT + LoFTR) | Seamless OHRC ($0.25\text{m}$) to IIRS ($80\text{m}$) matching. |
-| **Sub-Pixel Precision** | ⚠️ Integer only ($\pm 1.0\text{ px}$) | ✅ **$< 0.10\text{ px}$** (Parabolic Refiner) | Complies with strict ISRO $\text{RMSE} \le 0.40\text{ px}$ mandate. |
+| **Illumination Invariance** | ❌ Fails on $\\Delta \\theta_{\\text{sun}} > 30^\\circ$ | ✅ **180° Invariant** (Log-Gabor PC) | Flawless registration across morning/afternoon passes. |
+| **Scale Disparity Tolerance** | ❌ Max $2\\times$ | ✅ **Up to $320\\times$** (ASIFT + LoFTR) | Seamless OHRC ($0.25\\text{m}$) to IIRS ($80\\text{m}$) matching. |
+| **Sub-Pixel Precision** | ⚠️ Integer only ($\pm 1.0\\text{ px}$) | ✅ **$< 0.10\\text{ px}$** (Parabolic Refiner) | Complies with strict ISRO $\\text{RMSE} \\le 0.40\\text{ px}$ mandate. |
 | **Spatial Clustering** | ❌ Heavy clumping in craters | ✅ **Uniform Quad-Tree Decomposition** | Eliminates distortion & stretching in lunar maria plains. |
-| **Non-Linear Terrain Warping** | ⚠️ Affine/Homography only | ✅ **Thin-Plate Splines (TPS)** | Accommodates extreme $20^\circ - 45^\circ$ topographic relief. |
+| **Non-Linear Terrain Warping** | ⚠️ Affine/Homography only | ✅ **Thin-Plate Splines (TPS)** | Accommodates extreme $20^\\circ - 45^\\circ$ topographic relief. |
 | **Zero-Trust Security** | ❌ Vulnerable to heap exploits | ✅ **Defused XML + Merkle Audit** | Defends against pixel-bombs, XXE, and unauthorized jobs. |
-| **Low-End PC Scaling** | ❌ CUDA OOM Crashes | ✅ **HardwareOptimizer (psutil)** | Dynamic thread & scale adaptation for $\le 4\text{GB RAM}$ laptops. |
+| **Low-End PC Scaling** | ❌ CUDA OOM Crashes | ✅ **HardwareOptimizer (psutil)** | Dynamic thread & scale adaptation for $\\le 4\\text{GB RAM}$ laptops. |
 
 ---
 
 ## 📂 Repository Directory Layout
 
 ```text
-c:\Users\aryan\Desktop\project\
+c:\\Users\\aryan\\Desktop\\project\\
 ├── .github/
 │   ├── workflows/           # CI/CD pipelines (Pytest, Flake8, Bandit, Trivy)
 │   ├── ISSUE_TEMPLATE/      # Structured Bug Report & Feature Request forms
@@ -133,8 +133,9 @@ c:\Users\aryan\Desktop\project\
 │   ├── api/                 # FastAPI server + RS256 RBAC routes
 │   ├── core/                # Pydantic Settings v2, Exceptions, HardwareOptimizer
 │   └── ui/                  # Streamlit GCP Visualizer dashboard
-├── ml_service/              # Isolated AI Anomaly Detection Service (Scikit-Learn/Joblib)
-├── frontend/                # React 18 / Vite / Tailwind UI
+├── ml_service/              # Isolated AI Anomaly Detection Service (FastAPI + IsolationForest)
+├── backend/                 # Node.js + Express API Gateway (:3000)
+├── frontend/                # React 18 / Vite / Tailwind UI (:5173)
 ├── tests/                   # Mathematical & Photogrammetric verification test suites
 ├── CONTRIBUTING.md          # Developer onboarding & code style guide
 ├── SECURITY.md              # Aerospace-grade vulnerability disclosure policy
@@ -147,30 +148,46 @@ c:\Users\aryan\Desktop\project\
 
 Samanvaya is engineered to run seamlessly across resource-constrained laptops and multi-GPU high-performance computing clusters.
 
-### Option 1: Docker (Recommended)
-Launch the full zero-trust container mesh (FastAPI, React, Redis, ML Service).
+### Option 1: Cross-Platform One-Command Run (Recommended)
+Installs dependencies and launches all services simultaneously (ML service, Node gateway, and React frontend):
 ```bash
-docker-compose up --build -d
+npm start
 ```
-* **Frontend Portal**: `http://localhost:5173`
+* **Web UI Dashboard**: `http://localhost:5173`
+* **Node.js Gateway**: `http://localhost:3000`
+* **ML Microservice**: `http://localhost:8001`
 * **FastAPI Backend**: `http://localhost:8000/docs`
 * **Streamlit Visualizer**: `http://localhost:8501`
 
-### Option 2: Bare Metal (One-Command Launch)
-Installs dependencies, starts the FastAPI backend, Streamlit dashboard, ML service, and Vite frontend concurrently.
+### Option 2: Docker Zero-Trust Mesh
+Launch the full container mesh with isolated networks:
+```bash
+docker-compose up --build -d
+```
+
+### Option 3: Dedicated OS Launchers
 ```bash
 # Windows
-.\start.ps1
+.\\start.ps1
 
 # Linux / macOS
 ./start.sh
 ```
 
-### Option 3: Developer Test Suite
-Execute the mathematical validation and photogrammetry test suite:
+### Option 4: Core Photogrammetry Test Suite
 ```bash
 python -m pytest tests/test_photogrammetry.py -v
 ```
+
+---
+
+## 📡 ML Service API Endpoints
+
+- `GET /` — Microservice health & telemetry
+- `POST /api/predict_anomaly` — Single-sample lunar registration telemetry evaluation
+- `POST /api/predict_batch` — Vectorized batch anomaly prediction
+- `GET /api/top_anomalies` — Top anomalies heap query
+- `POST /api/retrain` — Dynamic Isolation Forest retraining
 
 ---
 
