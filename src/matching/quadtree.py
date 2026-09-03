@@ -1,185 +1,79 @@
 """
-src/matching/quadtree.py
-
-Quad-Tree spatial distribution for Adaptive Non-Maximal Suppression (ANMS).
-Ensures uniform distribution of keypoints across the image space, which is critical
-for robust homography/affine estimation in low-contrast lunar imagery.
+Quad-Tree Spatial Uniformity Enforcer.
+Recursively divides the image swath to ensure Ground Control Points (GCPs)
+are distributed evenly, preventing geometric distortion in featureless lunar maria.
 """
-from __future__ import annotations
 
 import numpy as np
-from typing import List, Tuple, Any
 
-class QuadTreeANMS:
-    """
-    Quad-Tree based Adaptive Non-Maximal Suppression (ANMS).
-    Recursively divides the image into a Quad-Tree and selects the strongest
-    features within each spatial bin to guarantee uniform spatial coverage.
-    """
+class QuadTreeNode:
+    def __init__(self, x_min: float, y_min: float, x_max: float, y_max: float):
+        self.bounds = (x_min, y_min, x_max, y_max)
+        self.points = []
+        self.children = []
 
-    def __init__(self, max_points: int = 2000, grid_size: int = 8) -> None:
-        """
-        Parameters
-        ----------
-        max_points : int
-            The maximum number of keypoints to retain after suppression.
-        grid_size : int
-            The base granularity of the grid (e.g., 8x8 blocks).
-        """
-        self.max_points = max_points
-        self.grid_size = grid_size
+    def insert(self, pt: np.ndarray, confidence: float):
+        self.points.append((pt, confidence))
 
-    def distribute_keypoints(
-        self, 
-        keypoints: np.ndarray, 
-        scores: np.ndarray, 
-        image_shape: Tuple[int, int]
-    ) -> np.ndarray:
-        """
-        Spatially distribute keypoints using a Quad-Tree structure.
+    def subdivide(self):
+        x_min, y_min, x_max, y_max = self.bounds
+        mid_x = (x_min + x_max) / 2
+        mid_y = (y_min + y_max) / 2
 
-        Parameters
-        ----------
-        keypoints : np.ndarray
-            Array of shape (N, 2) containing (x, y) coordinates of keypoints.
-        scores : np.ndarray
-            Array of shape (N,) containing the strength/response of each keypoint.
-        image_shape : Tuple[int, int]
-            The shape of the original image (rows, cols).
-
-        Returns
-        -------
-        np.ndarray
-            Array of shape (M, 2) containing the filtered keypoints (M <= max_points).
-        """
-        if len(keypoints) == 0:
-            return np.array([])
-            
-        if len(keypoints) <= self.max_points:
-            # Sort by score descending and return
-            idx = np.argsort(scores)[::-1]
-            return keypoints[idx]
-
-        height, width = image_shape
-        
-        # Determine the maximum depth of the quadtree based on the grid size
-        # and requested max_points to ensure fine enough binning.
-        node = self._build_quadtree(
-            keypoints, scores, x_min=0, y_min=0, x_max=width, y_max=height
-        )
-        
-        # Retrieve distributed points
-        filtered_indices = []
-        self._extract_points(node, filtered_indices, target_count=self.max_points)
-        
-        # If we didn't hit exactly max_points, we pad with the remaining strongest points
-        if len(filtered_indices) < self.max_points:
-            remaining_needed = self.max_points - len(filtered_indices)
-            
-            # Mask out already selected indices
-            mask = np.ones(len(scores), dtype=bool)
-            mask[filtered_indices] = False
-            
-            # Find the strongest remaining points
-            remaining_indices = np.where(mask)[0]
-            remaining_scores = scores[remaining_indices]
-            
-            sorted_rem_idx = np.argsort(remaining_scores)[::-1][:remaining_needed]
-            filtered_indices.extend(remaining_indices[sorted_rem_idx])
-            
-        elif len(filtered_indices) > self.max_points:
-            # Technically shouldn't happen with proper target_count balancing,
-            # but safeguard just in case.
-            filtered_indices = filtered_indices[:self.max_points]
-
-        return keypoints[filtered_indices]
-
-    def _build_quadtree(
-        self, 
-        pts: np.ndarray, 
-        scores: np.ndarray, 
-        x_min: float, 
-        y_min: float, 
-        x_max: float, 
-        y_max: float,
-        depth: int = 0
-    ) -> dict:
-        """
-        Recursively construct the Quad-Tree over the keypoints.
-        """
-        # Node structure:
-        # { 'is_leaf': bool, 'indices': list, 'children': list }
-        
-        # Filter points within this bounding box
-        in_box = (
-            (pts[:, 0] >= x_min) & (pts[:, 0] < x_max) &
-            (pts[:, 1] >= y_min) & (pts[:, 1] < y_max)
-        )
-        indices = np.where(in_box)[0]
-        
-        # Stopping criteria: few points, or reached desired grid depth
-        if len(indices) <= 1 or depth >= np.log2(self.grid_size):
-            # Sort indices inside this leaf by score
-            sorted_indices = indices[np.argsort(scores[indices])[::-1]]
-            return {
-                'is_leaf': True,
-                'indices': sorted_indices.tolist(),
-                'children': []
-            }
-            
-        # Subdivide
-        x_mid = (x_min + x_max) / 2.0
-        y_mid = (y_min + y_max) / 2.0
-        
-        children = [
-            self._build_quadtree(pts, scores, x_min, y_min, x_mid, y_mid, depth + 1),  # TL
-            self._build_quadtree(pts, scores, x_mid, y_min, x_max, y_mid, depth + 1),  # TR
-            self._build_quadtree(pts, scores, x_min, y_mid, x_mid, y_max, depth + 1),  # BL
-            self._build_quadtree(pts, scores, x_mid, y_mid, x_max, y_max, depth + 1),  # BR
+        self.children = [
+            QuadTreeNode(x_min, y_min, mid_x, mid_y), # TL
+            QuadTreeNode(mid_x, y_min, x_max, mid_y), # TR
+            QuadTreeNode(x_min, mid_y, mid_x, y_max), # BL
+            QuadTreeNode(mid_x, mid_y, x_max, y_max)  # BR
         ]
-        
-        return {
-            'is_leaf': False,
-            'indices': [],
-            'children': children
-        }
-        
-    def _extract_points(self, node: dict, output_list: List[int], target_count: int) -> None:
+
+class UniformDistributor:
+    @staticmethod
+    def filter_points(points: np.ndarray, confidences: np.ndarray, 
+                      img_width: int, img_height: int, 
+                      max_points_per_cell: int = 5, max_depth: int = 4) -> np.ndarray:
         """
-        Recursively extract points from the quad tree in a round-robin fashion
-        across all leaf nodes until target_count is reached.
+        Enforces spatial uniformity using a Quad-Tree decomposition.
         """
-        # Collect all leaf lists
-        leaf_lists = []
+        root = QuadTreeNode(0, 0, img_width, img_height)
         
-        def collect_leaves(n):
-            if n['is_leaf']:
-                if n['indices']:
-                    leaf_lists.append(n['indices'])
+        # Load all points into root
+        for pt, conf in zip(points, confidences):
+            root.insert(pt, conf)
+
+        def build_tree(node: QuadTreeNode, depth: int):
+            if depth >= max_depth or len(node.points) <= max_points_per_cell:
+                return
+                
+            node.subdivide()
+            for pt_data in node.points:
+                x, y = pt_data[0]
+                # Route point to correct child quadrant
+                for child in node.children:
+                    bx_min, by_min, bx_max, by_max = child.bounds
+                    if bx_min <= x <= bx_max and by_min <= y <= by_max:
+                        child.insert(*pt_data)
+                        break
+            node.points = [] # Clear parent points
+            for child in node.children:
+                build_tree(child, depth + 1)
+
+        build_tree(root, 0)
+
+        # Collect the top N points from each leaf node
+        uniform_points = []
+        
+        def collect_points(node: QuadTreeNode):
+            if not node.children:
+                if not node.points: return
+                # Sort points in this cell by ML confidence score
+                node.points.sort(key=lambda x: x[1], reverse=True)
+                # Keep only the strongest points up to the limit
+                for pt, _ in node.points[:max_points_per_cell]:
+                    uniform_points.append(pt)
             else:
-                for c in n['children']:
-                    collect_leaves(c)
-                    
-        collect_leaves(node)
-        
-        if not leaf_lists:
-            return
-            
-        # Round-robin extraction from leaves
-        added = 0
-        pointers = [0] * len(leaf_lists)
-        
-        while added < target_count:
-            progress = False
-            for i, lst in enumerate(leaf_lists):
-                if added >= target_count:
-                    break
-                if pointers[i] < len(lst):
-                    output_list.append(lst[pointers[i]])
-                    pointers[i] += 1
-                    added += 1
-                    progress = True
-                    
-            if not progress:
-                # All leaves exhausted
-                break
+                for child in node.children:
+                    collect_points(child)
+
+        collect_points(root)
+        return np.array(uniform_points)

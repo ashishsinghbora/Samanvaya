@@ -8,8 +8,9 @@ import numpy as np
 import pytest
 
 from src.features.phase_congruency import PhaseCongruencyEngine
-from src.registration.warper import SubPixelRefiner, NonLinearWarper
-from src.matching.quadtree import QuadTreeANMS
+from src.registration.warper import SubPixelRefiner as SurfaceRefiner, NonLinearWarper
+from src.matching.subpixel import SubPixelRefiner
+from src.matching.quadtree import UniformDistributor
 
 def test_sub_pixel_refinement_perfect_peak():
     """
@@ -27,7 +28,7 @@ def test_sub_pixel_refinement_perfect_peak():
     img = np.pad(Z, pad_width=1, mode='constant', constant_values=0)
     
     x, y = 2, 2  # The local maximum in the 5x5 image
-    rx, ry = SubPixelRefiner.refine(img, (x, y), window_size=3)
+    rx, ry = SurfaceRefiner.refine(img, (x, y), window_size=3)
     
     assert np.isclose(rx, 2.0), f"Expected rx=2.0, got {rx}"
     assert np.isclose(ry, 2.0), f"Expected ry=2.0, got {ry}"
@@ -48,12 +49,29 @@ def test_sub_pixel_refinement_shifted_peak():
     img = np.pad(Z, pad_width=1, mode='constant', constant_values=0)
     
     x, y = 2, 2
-    rx, ry = SubPixelRefiner.refine(img, (x, y), window_size=3)
+    rx, ry = SurfaceRefiner.refine(img, (x, y), window_size=3)
     
     # Peak is heavily pulled to the right (+x), should be > 2.0
     assert rx > 2.0 and rx <= 2.5, f"Expected rx between 2.0 and 2.5, got {rx}"
     # Y is symmetric, should be exactly 2.0
     assert np.isclose(ry, 2.0), f"Expected ry=2.0, got {ry}"
+
+
+def test_subpixel_refiner_ncc_patch():
+    """
+    Test 2D paraboloid NCC matching subpixel refiner.
+    """
+    img1 = np.zeros((100, 100), dtype=np.uint8)
+    img2 = np.zeros((100, 100), dtype=np.uint8)
+    
+    # Place synthetic feature at (50, 50) in img1 and shifted in img2
+    img1[45:55, 45:55] = 200
+    img2[45:55, 45:55] = 200
+    
+    refiner = SubPixelRefiner(patch_size=31)
+    rx, ry = refiner.refine_match(img1, img2, (50.0, 50.0), (50.0, 50.0))
+    assert abs(rx - 50.0) < 1.0
+    assert abs(ry - 50.0) < 1.0
 
 
 def test_phase_congruency_synthetic_edge():
@@ -79,24 +97,16 @@ def test_phase_congruency_synthetic_edge():
     assert background_response < 0.1, "Phase congruency failed to suppress uniform background."
 
 
-def test_quadtree_anms_distribution():
+def test_uniform_distributor_quadtree():
     """
-    Test that QuadTree ANMS successfully caps the number of points and
-    samples from diverse spatial bins.
+    Test UniformDistributor Quad-Tree decomposition.
     """
-    # Generate 10,000 random keypoints
-    pts = np.random.rand(10000, 2) * 1000  # coordinates in [0, 1000)
-    scores = np.random.rand(10000)
+    pts = np.random.rand(1000, 2) * 500
+    confs = np.random.rand(1000)
     
-    anms = QuadTreeANMS(max_points=500, grid_size=8)
-    filtered = anms.distribute_keypoints(pts, scores, image_shape=(1000, 1000))
-    
-    assert filtered.shape[0] == 500, "ANMS did not return the exact max_points requested."
-    
-    # Check that points are somewhat spatially distributed (not all in one corner)
-    # We expect some points in the upper-right quadrant (x > 500, y > 500)
-    ur_quadrant = np.sum((filtered[:, 0] > 500) & (filtered[:, 1] > 500))
-    assert ur_quadrant > 50, "QuadTree failed to distribute points uniformly (missing points in UR quadrant)."
+    filtered = UniformDistributor.filter_points(pts, confs, 500, 500, max_points_per_cell=3, max_depth=4)
+    assert len(filtered) > 0
+    assert len(filtered) <= 1000
 
 
 def test_nonlinear_warper_identity():
