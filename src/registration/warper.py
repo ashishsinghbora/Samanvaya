@@ -188,3 +188,20 @@ class NonLinearWarper:
         )
         
         return warped
+
+
+class SpaceWarper:
+    """
+    Convenience wrapper for planetary coordinate space deformation.
+    """
+    @staticmethod
+    def warp_image_tps(image: np.ndarray, output_shape: Tuple[int, int], 
+                       src_pts: np.ndarray, dst_pts: np.ndarray) -> np.ndarray:
+        """
+        Warps image using Thin-Plate Splines based on tie point correspondences.
+        """
+        warper = NonLinearWarper(kernel='thin_plate_spline')
+        # Target to source mapping for reverse remap
+        warper.fit(dst_pts, src_pts)
+        return warper.warp_image(image, output_shape)
+
