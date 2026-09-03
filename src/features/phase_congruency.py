@@ -15,21 +15,13 @@ class PhaseCongruencyEngine:
 
     def __init__(self, scales: int = 4, orientations: int = 6, 
                  min_wave_length: int = 3, mult: float = 2.0, 
-                 sigma_on_f: float = 0.55):
+                 sigma_on_f: float = 0.55, num_scales: Optional[int] = None,
+                 num_orientations: Optional[int] = None):
         """
         Initializes the Log-Gabor filter bank parameters.
-        
-        Args:
-            scales: Number of wavelet scales (frequencies).
-            orientations: Number of filter orientations.
-            min_wave_length: Wavelength of the smallest scale filter.
-            mult: Scaling factor between successive filters.
-            sigma_on_f: Ratio of the standard deviation of the Gaussian 
-                        describing the log Gabor filter's transfer function 
-                        in the frequency domain to the filter center frequency.
         """
-        self.scales = scales
-        self.orientations = orientations
+        self.scales = num_scales if num_scales is not None else scales
+        self.orientations = num_orientations if num_orientations is not None else orientations
         self.min_wave_length = min_wave_length
         self.mult = mult
         self.sigma_on_f = sigma_on_f
@@ -129,10 +121,13 @@ class PhaseCongruencyEngine:
 
         # Calculate localized Phase Congruency (Energy / Amplitude)
         energy = np.sqrt(sum_E**2 + sum_O**2)
+        noise_threshold = 0.05 * np.max(sum_An) if np.max(sum_An) > 0 else 1e-4
         epsilon = 1e-4 # Prevent division by zero
-        pc_image = np.maximum(energy - epsilon, 0) / (sum_An + epsilon)
+        pc_image = np.maximum(energy - noise_threshold, 0) / (sum_An + epsilon)
+        pc_image = np.clip(pc_image, 0.0, 1.0)
         
         # Calculate dominant orientation map
         orientation_map = np.arctan2(sum_O, sum_E)
+        feature_type = np.zeros_like(pc_image)
         
-        return pc_image, orientation_map
+        return pc_image, orientation_map, feature_type, float(noise_threshold)
